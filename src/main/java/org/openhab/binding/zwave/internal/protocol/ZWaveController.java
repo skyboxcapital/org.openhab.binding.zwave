@@ -94,7 +94,7 @@ public class ZWaveController {
     private int manufactureId = 0;
     private int deviceType = 0;
     private int deviceId = 0;
-    private int zwaveLibraryType = 0;
+    private int zwaveLibraryType = 0; // TODO:
     private final int sentDataPointer = 1;
     private Integer sucNode = 0;
     private ZWaveDeviceType controllerType = ZWaveDeviceType.UNKNOWN;

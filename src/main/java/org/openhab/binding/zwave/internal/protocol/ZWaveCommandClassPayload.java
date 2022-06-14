@@ -38,8 +38,8 @@ public class ZWaveCommandClassPayload implements ZWaveMessagePayload {
 
     public ZWaveCommandClassPayload(final SerialMessage incomingMessage) throws ZWaveSerialMessageException {
         ByteArrayOutputStream payloadData = new ByteArrayOutputStream();
-        int length = incomingMessage.getMessagePayloadByte(2) + 3;
-        for (int index = 3; index < length; index++) {
+        int length = incomingMessage.getMessagePayloadByte(3) + 4;
+        for (int index = 4; index < length; index++) {
             payloadData.write((byte) incomingMessage.getMessagePayloadByte(index));
         }
 

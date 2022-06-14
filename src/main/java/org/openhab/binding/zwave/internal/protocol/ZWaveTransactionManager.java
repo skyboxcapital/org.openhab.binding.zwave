@@ -144,9 +144,11 @@ public class ZWaveTransactionManager {
     private final int INITIAL_TX_QUEUE_SIZE = 128;
     // private final int MAX_OUTSTANDING_TRANSACTIONS = 3;
 
-    private final int TRANSMIT_OPTION_ACK = 0x01;
-    private final int TRANSMIT_OPTION_AUTO_ROUTE = 0x04;
-    private final int TRANSMIT_OPTION_EXPLORE = 0x20;
+    private final int TRANSMIT_OPTION_ACK = 0x01;           // 0b00000001;
+    private final int TRANSMIT_OPTION_LOW_POWER = 0x02;     // 0b00000010;
+    private final int TRANSMIT_OPTION_AUTO_ROUTE = 0x04;     //0b00000100;
+    private final int TRANSMIT_OPTION_NO_ROUTE =               0b00010000;
+    private final int TRANSMIT_OPTION_EXPLORE = 0x20;       // 0b00100000;
 
     /**
      * Holdoff delay in milliseconds. This is used to delay the next transaction if the controller sends an error while
@@ -516,9 +518,11 @@ public class ZWaveTransactionManager {
                 }
 
                 // Manage incoming command class messages separately so we can manage transaction responses
-                if (incomingMessage.getMessageClass() == SerialMessageClass.ApplicationCommandHandler) {
+                // if (incomingMessage.getMessageClass() == SerialMessageClass.ApplicationCommandHandler) {
+                // FIXME: This depends whether the chip is working in static or bridge mode
+                if (incomingMessage.getMessageClass() == SerialMessageClass.ApplicationCommandHandlerBridge) {
                     try {
-                        int nodeId = incomingMessage.getMessagePayloadByte(1);
+                        int nodeId = incomingMessage.getMessagePayloadByte(2);
                         ZWaveNode node = controller.getNode(nodeId);
 
                         if (node == null) {
@@ -538,7 +542,7 @@ public class ZWaveTransactionManager {
                                 logger.debug("NODE {}: Commands processed {}.", nodeId, commands.size());
 
                                 for (ZWaveCommandClassPayload command : commands) {
-                                    logger.debug("NODE {}: Checking command {}.", nodeId, command);
+                                    logger.debug("NODE {}: Checking command {}.", nodeId, command.getCommandClassId()); // TODO: better logging
                                     // Correlate transactions
                                     List<ZWaveTransaction> completed = new ArrayList<ZWaveTransaction>();
 
@@ -567,7 +571,9 @@ public class ZWaveTransactionManager {
                                             }
 
                                             if (transaction
-                                                    .getExpectedReplyClass() == SerialMessageClass.ApplicationCommandHandler
+                                                    // .getExpectedReplyClass() == SerialMessageClass.ApplicationCommandHandler
+                                                    .getExpectedReplyClass() == SerialMessageClass.ApplicationCommandHandlerBridge
+                                                    // FIXME: This depends whether the chip is working in static or bridge mode
                                                     && transaction.getExpectedCommandClass() != null
                                                     && command.getCommandClassId() == transaction
                                                             .getExpectedCommandClass().getKey()
@@ -775,7 +781,8 @@ public class ZWaveTransactionManager {
                         controller.handleTransactionComplete(currentTransaction, incomingMessage);
                     } else {
                         byte[] message = currentTransaction.getSerialMessage().getMessagePayload();
-                        if (message.length > 2 && message[0] == CommandClass.COMMAND_CLASS_WAKE_UP.getKey()
+                        if (message != null && message.length > 2
+                                && message[0] == CommandClass.COMMAND_CLASS_WAKE_UP.getKey()
                                 && message[1] == ZWaveWakeUpCommandClass.WAKE_UP_NO_MORE_INFORMATION) {
                             // Failed WAKE_UP_NO_MORE_INFORMATION treated as the node going to sleep
                             logger.debug("NODE {}: TID {}: Failed WAKE_UP_NO_MORE_INFORMATION treated as complete",
@@ -1056,7 +1063,7 @@ public class ZWaveTransactionManager {
                         // If this is a SendData message, and we're not waiting for DATA
                         // Then we need to cancel this request.
                         // TODO: Maybe this should be generalised to allow for other commands?
-                        if (transaction.getSerialMessageClass() == SerialMessageClass.SendData
+                        if (transaction.getSerialMessageClass() == SerialMessageClass.SendDataBridge
                                 && (transaction.getTransactionState() == TransactionState.WAIT_REQUEST
                                         || transaction.getTransactionState() == TransactionState.WAIT_RESPONSE)) {
                             // SendData requests need to be aborted - so we don't cancel the transaction.
