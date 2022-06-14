@@ -131,7 +131,7 @@ public class SerialMessage {
     public SerialMessage(int nodeId, byte[] buffer) {
         logger.trace("NODE {}: Creating new SerialMessage from buffer = {}", nodeId, SerialMessage.bb2hex(buffer));
         // Handle signalling frames (ie ACK, CAN, NAK)
-        if (buffer.length == 1) {
+        if (buffer.length == 1) { // TODO: don't use magic numbers
             if (buffer[0] == 0x06) {
                 messageType = SerialMessageType.ACK;
             }
@@ -143,7 +143,7 @@ public class SerialMessage {
             }
             return;
         }
-        messageLength = buffer.length - 2; // buffer[1]; TODO: Why is this commented out?!?
+        messageLength = buffer[1];
         byte messageCheckSumm = calculateChecksum(buffer);
         byte messageCheckSummReceived = buffer[messageLength + 1];
         if (messageCheckSumm == messageCheckSummReceived) {
@@ -163,8 +163,37 @@ public class SerialMessage {
         // TODO: This check isn't 100% correct - at least not for ApplicationUpdate as it has no callback id
         // TODO: Check if messageClass expects a response?
         if (messageType == SerialMessageType.Request) {
-            callbackId = buffer[4] & 0xFF;
-            messageNode = buffer[5] & 0xFF;
+            if (messageClassKey == 0xA8) { // ApplicationCommandHandler_Bridge
+                var rxStatus = buffer[4] & 0xFF;
+                var destNodeID = buffer[5] & 0xFF;
+                var srcNodeID = buffer[6] & 0xFF;
+                messageNode = srcNodeID;
+
+                // TODO: do something with this:
+                var cmdLength = buffer[7] & 0xFF;
+                var multiDestsOffset_NodeMaskLen = buffer[8 + cmdLength];
+                int rxRSSIVal;
+
+                // If multiNodeMaskLen is ZERO the next parameter in SerialAPI frame is rxRSSIVal.
+                if (multiDestsOffset_NodeMaskLen == 0) {
+                    rxRSSIVal = buffer[8 + cmdLength + 1];
+                } else {
+                    var multiDestsNodeMask = buffer[8 + cmdLength + 1];
+                    rxRSSIVal = buffer[8 + cmdLength + 2];
+                }
+
+               // rxRSSIVal RSSI measurement of the received frame This is a signed 8-bit value.
+               // Values from RSSI_RESERVED_START to 124 are reserved
+               // reserved: 124 (0x7C) to -31 (0xE1)
+               // All values below RSSI_RESERVED_START are received power in dBms
+               // RSSI_NOT_AVAILABLE - RSSI measurement not available (0x7F, 127)
+               // RSSI_MAX_POWER_SATURATED - Receiver saturated. RSSI too high to measure precisely (0x7E, 126)
+               // RSSI_BELOW_SENSITIVITY - No signal detected. The RSSI is too low to measure precisely. (0x7D, 125)
+
+            } else {
+                callbackId = buffer[4] & 0xFF; // FIXME: is this funcID
+                messageNode = buffer[5] & 0xFF; // FIXME: is this almost always txStatus or bStatus
+            }
         }
         logger.trace("NODE {}: Message payload = {}", getMessageNode(), SerialMessage.bb2hex(messagePayload));
     }
@@ -221,12 +250,12 @@ public class SerialMessage {
         builder.append("Message: class=");
         builder.append(SerialMessageClass.getMessageClass(messageClassKey));
         builder.append('[');
-        builder.append(messageClassKey);
+        builder.append(Integer.toHexString(messageClassKey));
         builder.append(']');
         builder.append(", type=");
         builder.append(messageType);
         builder.append('[');
-        builder.append(messageType.ordinal());
+        builder.append(Integer.toHexString(messageType.getValue()));
         builder.append(']');
         builder.append(", dest=");
         builder.append(messageNode);
@@ -244,7 +273,7 @@ public class SerialMessage {
      */
     public byte[] getMessageBuffer() {
         ByteArrayOutputStream resultByteBuffer = new ByteArrayOutputStream();
-        resultByteBuffer.write((byte) 0x01);
+        resultByteBuffer.write((byte) 0x01); // SOF
         final SerialMessageClass messageClass = SerialMessageClass.getMessageClass(messageClassKey);
 
         // Calculate and set length
@@ -253,11 +282,11 @@ public class SerialMessage {
             messageLength += messagePayload.length;
         }
         messageLength += (messageClass.requiresRequest() == true && messageType == SerialMessageType.Request ? 1 : 0)
-                + (messageClass == SerialMessageClass.SendData && messageType == SerialMessageType.Request ? 1 : 0);
+                + (messageClass == SerialMessageClass.SendDataBridge && messageType == SerialMessageType.Request ? 5 : 0);
 
         resultByteBuffer.write((byte) messageLength);
-        resultByteBuffer.write((byte) messageType.ordinal());
-        resultByteBuffer.write((byte) messageClassKey);
+        resultByteBuffer.write((byte) messageType.ordinal()); // REQ/RES
+        resultByteBuffer.write((byte) messageClassKey); // 0xA9
 
         try {
             if (messagePayload != null) {
@@ -268,8 +297,14 @@ public class SerialMessage {
         }
 
         // Callback ID and transmit options for a Send Data message.
-        if (messageClass == SerialMessageClass.SendData && messageType == SerialMessageType.Request) {
+        if (messageClass == SerialMessageClass.SendDataBridge && messageType == SerialMessageType.Request) {
             resultByteBuffer.write(transmitOptions);
+
+            // pRoute[4]
+            resultByteBuffer.write(0);
+            resultByteBuffer.write(0);
+            resultByteBuffer.write(0);
+            resultByteBuffer.write(0);
         }
 
         if (messageType == SerialMessageType.Request && messageClass.requiresRequest()) {
@@ -283,7 +318,7 @@ public class SerialMessage {
         byte[] result = resultByteBuffer.toByteArray();
 
         // Calculate the checksum
-        result[result.length - 1] = 0x01;
+        // result[result.length - 1] = 0x01; THIS IS USELESS
         result[result.length - 1] = calculateChecksum(result);
 
         logger.debug("Assembled message buffer = {}", SerialMessage.bb2hex(result));
@@ -445,11 +480,21 @@ public class SerialMessage {
      *
      */
     public enum SerialMessageType {
-        Request, // 0x00
-        Response, // 0x01
-        ACK,
-        NAK,
-        CAN
+        Request(0x00),
+        Response(0x01),
+        ACK(0x06),
+        NAK(0x15),
+        CAN(0x18);
+
+        private final int value;
+
+        SerialMessageType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 
     /**
@@ -575,7 +620,9 @@ public class SerialMessage {
         GetProtocolStatus(0xBF),
         SetPromiscuousMode(0xD0), // Set controller into promiscuous mode to listen to all frames
         SetRoutingMax(0xD4),
-        PromiscuousApplicationCommandHandler(0xD1);
+        PromiscuousApplicationCommandHandler(0xD1),
+        ApplicationCommandHandlerBridge(0xA8),
+        SendDataBridge(0xA9, true, true, true);
 
         /**
          * A mapping between the integer code and its corresponding ZWaveMessage

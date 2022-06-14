@@ -38,7 +38,7 @@ public class SendDataMessageClass extends ZWaveCommandProcessor {
     public boolean handleResponse(ZWaveController zController, ZWaveTransaction transaction,
             SerialMessage incomingMessage) throws ZWaveSerialMessageException {
         logger.trace("Handle Message Send Data Response");
-        if (incomingMessage.getMessagePayloadByte(0) != 0x00) {
+        if (incomingMessage.getMessagePayloadByte(0) != 0x00) { // TODO: here is a problem
             logger.debug("NODE {}: sentData successfully placed on stack.", transaction.getNodeId());
 
             // This response is our controller ACK

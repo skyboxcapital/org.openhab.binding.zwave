@@ -98,20 +98,24 @@ public class ZWaveCommandClassTransactionPayload extends ZWaveCommandClassPayloa
 
     @Override
     public SerialMessage getSerialMessage() {
-        SerialMessage serialMessage = new SerialMessage(nodeId, SerialMessageClass.SendData, SerialMessageType.Request);
+        SerialMessage serialMessage = new SerialMessage(nodeId, SerialMessageClass.SendDataBridge, SerialMessageType.Request);
 
         byte[] output;
         if (payload == null) {
-            output = new byte[2];
+            output = new byte[3];
         } else {
-            output = new byte[2 + payload.length];
+            output = new byte[3 + payload.length];
         }
 
-        output[0] = (byte) nodeId;
-        output[1] = (byte) (output.length - 2);
+        int NODE_BROADCAST = 0xFF; // 0b11111111 or 255
 
-        for (int i = 2; i < output.length; ++i) {
-            output[i] = payload[i - 2];
+        output[0] = 1; // srcNodeID
+        output[1] = (byte) nodeId; // destNodeID
+        output[2] = (byte) payload.length; // dataLength
+
+        // pData[]
+        for (int i = 3; i < 3 + payload.length; ++i) {
+            output[i] = payload[i - 3];
         }
 
         serialMessage.setMessagePayload(output);
@@ -125,7 +129,7 @@ public class ZWaveCommandClassTransactionPayload extends ZWaveCommandClassPayloa
 
     @Override
     public SerialMessageClass getSerialMessageClass() {
-        return SerialMessageClass.SendData;
+        return SerialMessageClass.SendDataBridge;
     }
 
     @Override
@@ -134,7 +138,8 @@ public class ZWaveCommandClassTransactionPayload extends ZWaveCommandClassPayloa
         if (expectedResponseCommandClass == null) {
             return null;
         }
-        return SerialMessageClass.ApplicationCommandHandler;
+//        return SerialMessageClass.ApplicationCommandHandler; // FIXME: This depends whether the chip is working in static or bridge mode
+        return SerialMessageClass.ApplicationCommandHandlerBridge;
     }
 
     @Override

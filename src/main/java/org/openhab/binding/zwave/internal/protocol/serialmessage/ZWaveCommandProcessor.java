@@ -101,7 +101,7 @@ public abstract class ZWaveCommandProcessor {
         if (messageMap == null) {
             messageMap = new HashMap<SerialMessage.SerialMessageClass, Class<? extends ZWaveCommandProcessor>>();
             messageMap.put(SerialMessage.SerialMessageClass.AddNodeToNetwork, AddNodeMessageClass.class);
-            messageMap.put(SerialMessage.SerialMessageClass.ApplicationCommandHandler,
+            messageMap.put(SerialMessage.SerialMessageClass.ApplicationCommandHandlerBridge,
                     ApplicationCommandMessageClass.class);
             messageMap.put(SerialMessage.SerialMessageClass.ApplicationUpdate, ApplicationUpdateMessageClass.class);
             messageMap.put(SerialMessage.SerialMessageClass.AssignReturnRoute, AssignReturnRouteMessageClass.class);
@@ -126,7 +126,7 @@ public abstract class ZWaveCommandProcessor {
             messageMap.put(SerialMessage.SerialMessageClass.RequestNodeInfo, RequestNodeInfoMessageClass.class);
             messageMap.put(SerialMessage.SerialMessageClass.RequestNodeNeighborUpdate,
                     RequestNodeNeighborUpdateMessageClass.class);
-            messageMap.put(SerialMessage.SerialMessageClass.SendData, SendDataMessageClass.class);
+            messageMap.put(SerialMessage.SerialMessageClass.SendDataBridge, SendDataMessageClass.class);
             messageMap.put(SerialMessage.SerialMessageClass.SerialApiGetCapabilities,
                     SerialApiGetCapabilitiesMessageClass.class);
             messageMap.put(SerialMessage.SerialMessageClass.SerialApiGetInitData,

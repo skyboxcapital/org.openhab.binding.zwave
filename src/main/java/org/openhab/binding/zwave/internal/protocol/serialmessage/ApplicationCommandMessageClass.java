@@ -33,14 +33,14 @@ public class ApplicationCommandMessageClass extends ZWaveCommandProcessor {
     public boolean handleRequest(ZWaveController zController, ZWaveTransaction transaction,
             SerialMessage incomingMessage) {
         try {
-            int nodeId = incomingMessage.getMessagePayloadByte(1);
-            ZWaveNode node = zController.getNode(nodeId);
+            int destNodeId = incomingMessage.getMessagePayloadByte(2);
+            ZWaveNode node = zController.getNode(destNodeId);
 
             if (node == null) {
-                logger.warn("NODE {}: Not initialized yet (ie node unknown), ignoring message.", nodeId);
+                logger.warn("NODE {}: Not initialized yet (ie node unknown), ignoring message.", destNodeId);
                 return false;
             }
-            logger.debug("NODE {}: Application Command Request ({}:{})", nodeId, node.getNodeState().toString(),
+            logger.debug("NODE {}: Application Command Request ({}:{})", destNodeId, node.getNodeState().toString(),
                     node.getNodeInitStage().toString());
 
             node.processCommand(new ZWaveCommandClassPayload(incomingMessage));
@@ -78,18 +78,18 @@ public class ApplicationCommandMessageClass extends ZWaveCommandProcessor {
         try {
             // If the expected command class is defined, then check it
             if (transaction.getExpectedCommandClass() == null
-                    || transaction.getExpectedCommandClass().getKey() != incomingMessage.getMessagePayloadByte(3)) {
+                    || transaction.getExpectedCommandClass().getKey() != incomingMessage.getMessagePayloadByte(4)) {
                 logger.debug("NO EXPECTED COMMAND CLASS match! ({} <> {}) - {}", transaction.getExpectedCommandClass(),
-                        incomingMessage.getMessagePayloadByte(3), SerialMessage.bb2hex(transaction.getPayloadBuffer()));
+                        incomingMessage.getMessagePayloadByte(4), SerialMessage.bb2hex(transaction.getPayloadBuffer()));
 
                 return false;
             }
 
             // If the expected command class command is defined, then check it
             if (transaction.getExpectedCommandClassCommand() == null
-                    || transaction.getExpectedCommandClassCommand() != incomingMessage.getMessagePayloadByte(4)) {
+                    || transaction.getExpectedCommandClassCommand() != incomingMessage.getMessagePayloadByte(5)) {
                 logger.debug("NO EXPECTED COMMAND CLASS COMMAND match! ({} <> {}) - {}",
-                        transaction.getExpectedCommandClassCommand(), incomingMessage.getMessagePayloadByte(4),
+                        transaction.getExpectedCommandClassCommand(), incomingMessage.getMessagePayloadByte(5),
                         SerialMessage.bb2hex(transaction.getPayloadBuffer()));
 
                 return false;
