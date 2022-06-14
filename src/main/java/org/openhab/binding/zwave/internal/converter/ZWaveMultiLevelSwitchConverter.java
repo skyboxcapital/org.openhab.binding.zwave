@@ -167,7 +167,7 @@ public class ZWaveMultiLevelSwitchConverter extends ZWaveCommandClassConverter {
         boolean configInvertControl = "true".equalsIgnoreCase(channel.getArguments().get("config_invert_control"));
         boolean configInvertPercent = "true".equalsIgnoreCase(channel.getArguments().get("config_invert_percent"));
 
-        if (command instanceof StopMoveType && command == StopMoveType.STOP) {
+        if (command == StopMoveType.STOP) {
             // Special handling for the STOP command
             transaction = commandClass.stopLevelChangeMessage();
         } else if (command instanceof UpDownType) {
@@ -230,7 +230,7 @@ public class ZWaveMultiLevelSwitchConverter extends ZWaveCommandClassConverter {
         // Poll an update once we've sent the command if this is a STOP
         // Don't poll immediately since some devices return the original value, and some the new value.
         // This conflicts with OH that will move the slider immediately.
-        if (command instanceof StopMoveType && command == StopMoveType.STOP) {
+        if (command == StopMoveType.STOP) {
             messages.add(node.encapsulate(commandClass.getValueMessage(), channel.getEndpoint()));
         }
         return messages;

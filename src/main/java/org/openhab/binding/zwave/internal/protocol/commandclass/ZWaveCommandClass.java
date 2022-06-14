@@ -51,7 +51,7 @@ public abstract class ZWaveCommandClass {
             this.name = name;
             this.method = method;
         }
-    };
+    }
 
     @XStreamOmitField
     Map<Integer, ZWaveResponseHandlerMethod> commands;

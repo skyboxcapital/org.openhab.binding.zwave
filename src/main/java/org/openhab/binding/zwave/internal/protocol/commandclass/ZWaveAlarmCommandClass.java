@@ -90,7 +90,7 @@ public class ZWaveAlarmCommandClass extends ZWaveCommandClass
     public enum ReportType {
         ALARM,
         NOTIFICATION
-    };
+    }
 
     /**
      * Creates a new instance of the ZWaveAlarmCommandClass class.
@@ -280,7 +280,7 @@ public class ZWaveAlarmCommandClass extends ZWaveCommandClass
      */
     public ZWaveCommandClassTransactionPayload getValueMessage() {
         // TODO Is this used
-        for (Map.Entry<AlarmType, Alarm> entry : alarms.entrySet()) {
+        for (Entry<AlarmType, Alarm> entry : alarms.entrySet()) {
             return getMessage(entry.getValue().getAlarmType(), 0);
         }
 
@@ -406,7 +406,7 @@ public class ZWaveAlarmCommandClass extends ZWaveCommandClass
     public Collection<ZWaveCommandClassTransactionPayload> getDynamicValues(boolean refresh) {
         ArrayList<ZWaveCommandClassTransactionPayload> result = new ArrayList<ZWaveCommandClassTransactionPayload>();
 
-        for (Map.Entry<AlarmType, Alarm> entry : alarms.entrySet()) {
+        for (Entry<AlarmType, Alarm> entry : alarms.entrySet()) {
             if (refresh == true || entry.getValue().getInitialised() == false) {
                 if (getVersion() < 3) {
                     result.add(getMessage(entry.getValue().getAlarmType(), 0));

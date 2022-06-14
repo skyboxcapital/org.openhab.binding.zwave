@@ -12,18 +12,6 @@
  */
 package org.openhab.binding.zwave.internal.converter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import org.openhab.core.library.types.DecimalType;
-import org.openhab.core.library.types.OnOffType;
-import org.openhab.core.library.types.OpenClosedType;
-import org.openhab.core.library.types.StringType;
-import org.openhab.core.types.Command;
-import org.openhab.core.types.State;
 import org.openhab.binding.zwave.handler.ZWaveControllerHandler;
 import org.openhab.binding.zwave.handler.ZWaveThingChannel;
 import org.openhab.binding.zwave.internal.protocol.ZWaveController;
@@ -34,8 +22,13 @@ import org.openhab.binding.zwave.internal.protocol.commandclass.ZWaveAlarmComman
 import org.openhab.binding.zwave.internal.protocol.commandclass.ZWaveCommandClass;
 import org.openhab.binding.zwave.internal.protocol.event.ZWaveCommandClassValueEvent;
 import org.openhab.binding.zwave.internal.protocol.transaction.ZWaveCommandClassTransactionPayload;
+import org.openhab.core.library.types.*;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 /**
  * ZWaveAlarmConverter class. Converter for communication with the {@link ZWaveAlarmCommandClass}. Implements polling of
@@ -128,12 +121,7 @@ public class ZWaveAlarmConverter extends ZWaveCommandClassConverter {
         // Battery alarms
         events = new HashMap<NotificationEvent, State>();
         events.put(NotificationEvent.POWER_MANAGEMENT__NONE, OnOffType.OFF);
-        events.put(NotificationEvent.POWER_MANAGEMENT__BATTERY_CHARGING, OnOffType.OFF);
-        events.put(NotificationEvent.POWER_MANAGEMENT__BATTERY_FULL, OnOffType.OFF);
-        events.put(NotificationEvent.POWER_MANAGEMENT__REPLACE_BATTERY_SOON, OnOffType.ON);
         events.put(NotificationEvent.POWER_MANAGEMENT__REPLACE_BATTERY_NOW, OnOffType.ON);
-        events.put(NotificationEvent.POWER_MANAGEMENT__CHARGE_BATTERY_SOON, OnOffType.ON);
-        events.put(NotificationEvent.POWER_MANAGEMENT__CHARGE_BATTERY_NOW, OnOffType.ON);
         notifications.put("alarm_battery", events);
 
         // Power alarms
@@ -389,7 +377,7 @@ public class ZWaveAlarmConverter extends ZWaveCommandClassConverter {
             logger.debug("NODE {}: No event found with name 'event{}'", node.getNodeId(), command.toString());
             return null;
         }
-        String splits[] = eventString.split(":");
+        String[] splits = eventString.split(":");
         if (splits.length != 2) {
             logger.debug("NODE {}: Incorrectly formatted event found with name 'event{}' = {}", node.getNodeId(),
                     command.toString(), eventString);
