@@ -54,7 +54,7 @@ Touchscreen deadbolt without keyway<br /> <h1>Overview</h1><ul><li>Installs On S
     <!-- DEVICE PROPERTY DEFINITIONS -->
     <properties>
       <property name="vendor">ASSA ABLOY</property>
-      <property name="modelId">YRD256</property>
+      <property name="modelId">YRD652</property>
       <property name="manufacturerId">0129</property>
       <property name="manufacturerRef">8109:0DD5</property>
       <property name="dbReference">1452</property>
