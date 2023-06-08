@@ -1,0 +1,68 @@
+pipeline {
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+        timeout(time: 5, unit: 'MINUTES')
+    }
+
+    agent any
+
+    environment {
+        APP_NAME = "org.openhab.binding.zwave"
+        BRANCH_LOWER = (env.CHANGE_BRANCH != null ? env.CHANGE_BRANCH : env.BRANCH_NAME).toLowerCase()
+        GIT_HASH = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+    }
+
+    stages {
+        stage('Pre-build') {
+            agent {
+                label 'master'
+            }
+            steps {
+                sendStatusToGitHub(null)
+            }
+        }
+        stage('Build') {
+            agent {
+                docker {
+                    reuseNode true
+                    image 'adoptopenjdk/maven-openjdk11:latest'
+                }
+            }
+            steps {
+                sh "mvn -B -U -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -DskipTests clean package"
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar, target/lib/*.jar', onlyIfSuccessful: true
+                }
+                cleanup {
+                    deleteDir()
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                node('master'){
+                    sendStatusToGitHub(currentBuild.currentResult == 'SUCCESS')
+                    chuckNorris()
+                }
+            }
+        }
+    }
+}
+
+void sendStatusToGitHub(isSuccessful) {
+    state = isSuccessful == null ? 'pending' : isSuccessful ? 'success' : 'failure'
+    description = isSuccessful == null ? 'Building...' : isSuccessful ? 'Build successful' : 'Build failed'
+    withCredentials([string(credentialsId: 'propify-build-github-token', variable: 'GITHUB_CREDS')]) {
+        gitStatusPostUrl = "https://${GITHUB_CREDS}:x-oauth-basic@api.github.com/repos/skyboxcapital/${APP_NAME}/statuses/${GIT_HASH}"
+        sh """
+        curl -X POST -H "application/json" -d '{"state":"${state}", "target_url":"${BUILD_URL}", "description":"${description}", "context":"build/job"}' "${gitStatusPostUrl}"
+        """
+    }
+}
