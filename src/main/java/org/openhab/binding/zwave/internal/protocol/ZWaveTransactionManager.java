@@ -47,6 +47,8 @@ import org.openhab.binding.zwave.internal.protocol.transaction.ZWaveTransactionM
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.openhab.binding.zwave.internal.protocol.commandclass.ZWaveCommandClass.CommandClass.COMMAND_CLASS_USER_CODE;
+
 /**
  * This class handles transactions for the Z-Wave controller. A transaction contains a set of messages required
  * to transfer data to a device, and potentially receive data back.
@@ -1032,7 +1034,7 @@ public class ZWaveTransactionManager {
         public void run() {
             synchronized (sendQueue) {
                 // Handle the holdoff case.
-                // This is set after a RESponse error to delay the next message
+                // This is set after a response error to delay the next message
                 if (holdoffActive.getAndSet(false)) {
                     logger.trace("Holdoff Timer triggered...");
                     sendNextMessage();
@@ -1042,19 +1044,19 @@ public class ZWaveTransactionManager {
 
                 logger.trace("Transaction Timeout.......... {} outstanding transactions",
                         outstandingTransactions.size());
-                Date now = new Date();
-                // List<ZWaveTransaction> retries = new ArrayList<ZWaveTransaction>();
+                var now = new Date();
+                var retries = new ArrayList<ZWaveTransaction>();
 
                 // Loop through all outstanding transactions to see if any have timed out
                 Iterator<ZWaveTransaction> iterator = outstandingTransactions.iterator();
                 while (iterator.hasNext()) {
                     if (!running) {
-                        logger.trace("Stop looping through oustanding transactions");
+                        logger.trace("Stop looping through outstanding transactions");
                         return;
                     }
                     ZWaveTransaction transaction = iterator.next();
                     Date timer = transaction.getTimeout();
-                    if (timer != null && timer.after(now) == false) {
+                    if (timer != null && !timer.after(now)) {
                         // Timeout
                         logger.debug("NODE {}: TID {}: Timeout at state {}. {} retries remaining.",
                                 transaction.getNodeId(), transaction.getTransactionId(),
@@ -1087,24 +1089,29 @@ public class ZWaveTransactionManager {
                             }
 
                             // Resend if there are still attempts remaining
-                            // if (transaction.decrementAttemptsRemaining() <= 0) {
-                            transaction.setTransactionCanceled();
-                            controller.handleTransactionComplete(transaction, null);
-                            notifyTransactionComplete(transaction);
-                            // } else {
-                            // Resend - add to a separate list so as not to impact iterator
-                            // transaction.resetTransaction();
-                            // retries.add(transaction);
-                            // }
+                            //TODO: This way we are only retrying user codes transactions. We need to know why this
+                            // functionality was commented out on first place in order to remove this filter or revert.
+                            if (transaction.getExpectedCommandClass() != COMMAND_CLASS_USER_CODE
+                                    || transaction.decrementAttemptsRemaining() <= 0) {
+                                transaction.setTransactionCanceled();
+                                controller.handleTransactionComplete(transaction, null);
+                                notifyTransactionComplete(transaction);
+                            } else {
+                                logger.debug("TID {}: Transaction added to retry list. Command class {}.",
+                                        transaction.getTransactionId(), transaction.getExpectedCommandClass());
+                                // Resend - add to a separate list so as not to impact iterator
+                                transaction.resetTransaction();
+                                retries.add(transaction);
+                            }
                         }
                     }
                 }
 
                 // Add retries to the queue
-                // for (ZWaveTransaction transaction : retries) {
-                // logger.debug("Resending... Transaction " + transaction.getTransactionId());
-                // addTransactionToQueue(transaction);
-                // }
+                for (ZWaveTransaction transaction : retries) {
+                    logger.debug("Resending... Transaction " + transaction.getTransactionId());
+                    addTransactionToQueue(transaction);
+                }
 
                 // If there's no outstanding transaction, try and send one
                 sendNextMessage();
